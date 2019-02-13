@@ -1,6 +1,7 @@
 package ca.ualberta.cs.lonelytwitter;
 
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * @author Cole Boytinck
@@ -11,12 +12,23 @@ public class Tweet {
     private String message;
     private Date date;
 
+    public UUID getUniqueID() {
+        return UniqueID;
+    }
+
+    public void setUniqueID(UUID uniqueID) {
+        UniqueID = uniqueID;
+    }
+
+    private UUID UniqueID;
+
     /**
      *
      * @param message String, the tweet message
      */
     Tweet(String message) {
         this.message = message;
+        this.UniqueID = UUID.randomUUID();
     }
 
     /**

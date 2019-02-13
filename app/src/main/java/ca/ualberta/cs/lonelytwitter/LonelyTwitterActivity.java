@@ -14,6 +14,9 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Date;
 
+import com.firebase.client.DataSnapshot;
+import com.firebase.client.Firebase;
+
 import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
@@ -23,6 +26,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 
+import com.firebase.client.FirebaseError;
+import com.firebase.client.ValueEventListener;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -60,6 +65,9 @@ public class LonelyTwitterActivity extends Activity {
 		Button clearButton = (Button) findViewById(R.id.clear);
 		oldTweetsList = (ListView) findViewById(R.id.oldTweetsList);
 
+		Firebase.setAndroidContext(this);
+		final Firebase ref = new Firebase("https://fir-55ec5.firebaseio.com/");
+
 		saveButton.setOnClickListener(new View.OnClickListener() {
 
 			/**
@@ -71,38 +79,55 @@ public class LonelyTwitterActivity extends Activity {
 			public void onClick(View v) {
 				setResult(RESULT_OK);
 				String text = bodyText.getText().toString();
-
 				Tweet tweet = new Tweet(text);
-				TweetList.add(tweet);
-
-				//saveInFile(text, new Date(System.currentTimeMillis()));
+				addTweet(tweet);
+				Firebase tweetchild = ref.child("Tweets");
+				tweetchild.setValue(TweetList);
 				saveInFile();
 				adapter.notifyDataSetChanged();
-				//finish();
 
 			}
 		});
 
-		clearButton.setOnClickListener(new View.OnClickListener() {
+		ref.addValueEventListener(new ValueEventListener() {
+									  public void onDataChange(DataSnapshot snapshot) {
+									  	TweetList.clear();
+									  	for (DataSnapshot d: snapshot.child("Tweets").getChildren()) {
+									  		Tweet temp = d.getValue(Tweet.class);
+									  		if(temp.getMessage().startsWith("\\L")) {
+									  			temp.setMessage(temp.getMessage().toLowerCase());
+											}
+											if(temp.getMessage().startsWith("\\U")) {
+												temp.setMessage(temp.getMessage().toUpperCase());
+											}
+											TweetList.add(temp);
+										  }
+									  }
 
-			/**
-			 *
-			 * @param v View, the current view
-			 *
-			 * Sets the click activity for the clear button
-			 */
-			public void onClick(View v) {
-				setResult(RESULT_OK);
+									  public void onCancelled(FirebaseError firebaseError) {
 
-				TweetList.clear();
+									  }
+								  });
 
-				//saveInFile(text, new Date(System.currentTimeMillis()));
-				saveInFile();
-				adapter.notifyDataSetChanged();
-				//finish();
+				clearButton.setOnClickListener(new View.OnClickListener() {
 
-			}
-		});
+					/**
+					 * @param v View, the current view
+					 *          <p>
+					 *          Sets the click activity for the clear button
+					 */
+					public void onClick(View v) {
+						setResult(RESULT_OK);
+
+						TweetList.clear();
+
+						//saveInFile(text, new Date(System.currentTimeMillis()));
+						saveInFile();
+						adapter.notifyDataSetChanged();
+						//finish();
+
+					}
+				});
 	}
 
 	/**
@@ -122,7 +147,7 @@ public class LonelyTwitterActivity extends Activity {
 	/**
 	 * Loads the old tweets from a file
 	 */
-	private void loadFromFile() {
+	public void loadFromFile() {
 		ArrayList<String> tweets = new ArrayList<String>();
 		try {
 			FileInputStream fis = openFileInput(FILENAME);
@@ -145,7 +170,7 @@ public class LonelyTwitterActivity extends Activity {
 	/**
 	 * Saves all of the tweets in a file
 	 */
-	private void saveInFile() {
+	public void saveInFile() {
 		try {
 			FileOutputStream fos = openFileOutput(FILENAME,
 					Context.MODE_PRIVATE);
@@ -165,5 +190,38 @@ public class LonelyTwitterActivity extends Activity {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	public int addTweet(Tweet tweet) {
+
+		try {
+			for(Tweet t: TweetList) {
+				if(t.getMessage() == tweet.getMessage()) {
+					throw new IllegalArgumentException();
+				}
+			}
+		} catch(IllegalArgumentException e) {
+			return -1;
+		}
+
+		TweetList.add(tweet);
+		return 0;
+	}
+
+	public ArrayList<Tweet> getTweet() {
+		return TweetList;
+	}
+
+	public boolean hasTweet(Tweet tweet) {
+		for(Tweet t: TweetList) {
+			if (t.getMessage() == tweet.getMessage()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public int getCount() {
+		return TweetList.size();
 	}
 }
